@@ -1,0 +1,31 @@
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import dotenv from "dotenv";
+dotenv.config({path:process.env.ENV_FILE || ".env"});
+import "./db.js";
+import authRoutes from "./routes/auth.js";
+import productRoutes from "./routes/products.js";
+import dashboardRoutes from "./routes/dashboard.js";
+import miscRoutes from "./routes/misc.js";
+import { authenticate } from "./middleware.js";
+
+const app=express();
+app.use(helmet());
+app.use(cors({origin:process.env.CLIENT_URL || "http://localhost:5173"}));
+app.use(express.json({limit:"1mb"}));
+app.use("/api/auth",rateLimit({windowMs:15*60*1000,limit:40,standardHeaders:true,legacyHeaders:false}));
+app.get("/api/health",(req,res)=>res.json({status:"ok",service:"StockFlow API"}));
+app.use("/api/auth",authRoutes);
+app.use("/api",authenticate);
+app.use("/api/products",productRoutes);
+app.use("/api/dashboard",dashboardRoutes);
+app.use("/api",miscRoutes);
+app.use((req,res)=>res.status(404).json({message:"Endpoint not found."}));
+app.use((err,req,res,next)=>{
+ console.error(err);
+ res.status(500).json({message:"Something went wrong. Please try again."});
+});
+const port=process.env.PORT || 4000;
+app.listen(port,()=>console.log(`StockFlow API running at http://localhost:${port}`));
